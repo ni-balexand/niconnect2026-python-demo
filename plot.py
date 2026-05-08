@@ -2,22 +2,26 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 import numpy as np
 
+import math
+
 class Plotter:
     def __init__(self, sample_rate, num_samples):
-        delta_t = 1.0 / sample_rate
-        waveform_t = num_samples * delta_t
+        waveform_t = num_samples / sample_rate
         lines = []
 
-        blank_wfm = np.zeros(num_samples)
+        plot_decimation_factor = math.ceil(num_samples / 1000) # only plot ~1000 pts
+        plot_num_samples = int(num_samples / plot_decimation_factor)
+
+        blank_wfm = np.zeros(plot_num_samples)
         plt.style.use("dark_background")
         fig, axs = plt.subplots(2)
-        x_range = np.arange(0.0, waveform_t, delta_t)
+        x_range = np.linspace(0.0, waveform_t, plot_num_samples)
         for ax in axs:
             ax.set_xlim(0, waveform_t)
             ax.set_ylim(-0.6, 0.6)
             ax.xaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3g}"))
             ax.grid(True, alpha=0.3)
-            lines += ax.plot(x_range, blank_wfm, "sg-", x_range, blank_wfm, "m-", animated=True)
+            lines += ax.plot(x_range, blank_wfm, "g-", x_range, blank_wfm, "m-", animated=True)
             ax.legend(["Ch0", "Ch1"], loc="lower left")
         axs[0].set_title("Record 0")
         axs[1].set_title("Record 1")
@@ -31,13 +35,14 @@ class Plotter:
         self.axs = axs
         self.lines = lines
         self.bg = bg
+        self.plot_decimation_factor = int(plot_decimation_factor)
 
     def is_open(self):
         return plt.fignum_exists(self.fig.number)
 
     def update_plot(self, data_sources):
         for line, data_source in zip(self.lines, data_sources):
-            line.set_ydata(data_source)
+            line.set_ydata(data_source[::self.plot_decimation_factor])
         self.fig.canvas.restore_region(self.bg)
         self.axs[0].draw_artist(self.lines[0])
         self.axs[0].draw_artist(self.lines[1])
